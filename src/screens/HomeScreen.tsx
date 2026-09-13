@@ -3,14 +3,12 @@ import {
   View,
   StyleSheet,
   StatusBar,
-  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../theme/theme';
 import { AppText } from '../components/atoms/AppText';
 import { AppButton } from '../components/atoms/AppButton';
-import { Badge } from '../components/atoms/Badge';
 import { SettingsModal } from '../components/organisms/SettingsModal';
 import { HowToPlayModal } from '../components/organisms/HowToPlayModal';
 import { useSettings } from '../context/SettingsContext';
@@ -39,113 +37,84 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartGame }) => {
     >
       <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Top Badges */}
-        <View style={styles.topStatusRow}>
-          <Badge
-            label="⚡ %100 Çevrimdışı"
-            color={THEME.colors.mint}
-            backgroundColor={THEME.colors.mintLight}
-            size="sm"
-          />
-
-          <Badge
-            label="📸 Kamera Dedektifi"
-            color={THEME.colors.primary}
-            backgroundColor={THEME.colors.primaryLight}
-            size="sm"
-          />
+      {/* Top Header: Sol "Eşleştir" | Sağ "Skor" */}
+      <View style={styles.topHeader}>
+        <View style={styles.titleContainer}>
+          <AppText variant="titleMedium" style={styles.headerTitle}>
+            EŞLEŞTİR
+          </AppText>
         </View>
 
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <View style={[styles.mascotCircle, THEME.shadows.medium]}>
-            <Ionicons name="camera" size={54} color={THEME.colors.primary} />
-            <View style={styles.floatingLens}>
-              <Ionicons name="sparkles" size={20} color={THEME.colors.yellow} />
+        <View style={styles.scoreBadge}>
+          <Ionicons name="trophy" size={18} color={THEME.colors.yellow} />
+          <AppText variant="caption" style={styles.scoreText}>
+            Skor: {currentHighScore.toLocaleString()}
+          </AppText>
+        </View>
+      </View>
+
+      {/* Center: Büyük Tatlı Telefon Çerçevesi (Phone Mockup) */}
+      <View style={styles.centerSection}>
+        <View style={[styles.phoneFrame, THEME.shadows.medium]}>
+          {/* Telefonun Üst Çentiği / Kamerası */}
+          <View style={styles.phoneSpeakerNotch}>
+            <View style={styles.phoneCameraDot} />
+            <View style={styles.phoneSpeakerBar} />
+          </View>
+
+          {/* Telefon Ekranı İçi */}
+          <View style={styles.phoneInnerScreen}>
+            <View style={styles.cameraIconCircle}>
+              <Ionicons name="camera" size={38} color={THEME.colors.primary} />
             </View>
-            <View style={styles.floatingEmoji}>
-              <AppText style={styles.miniEmoji}>😜</AppText>
+
+            <AppText variant="titleLarge" style={styles.piksoLogoText} center>
+              PİKSO
+            </AppText>
+
+            <View style={styles.taglinePill}>
+              <AppText variant="caption" style={styles.taglineText}>
+                Fotoğrafını Çek & Eşle
+              </AppText>
             </View>
           </View>
 
-          <AppText variant="titleLarge" style={styles.appTitle} center>
-            Pikso
-          </AppText>
-          <AppText variant="bodyLarge" color={THEME.colors.primary} style={styles.appSubtitle} center>
-            Kamera ile Bul & Poz Ver!
-          </AppText>
-          <AppText variant="caption" color={THEME.colors.textMuted} style={styles.appDesc} center>
-            İstenen nesneyi, rengi veya komik yüz ifadesini kamerayla çek! Benzerlik oranına göre puanları topla!
-          </AppText>
+          {/* Telefonun Alt Home Çubuğu */}
+          <View style={styles.phoneHomeBar} />
         </View>
+      </View>
 
-        {/* High Score Card */}
-        <View style={[styles.highScoreCard, THEME.shadows.soft]}>
-          <View style={styles.scoreIconBox}>
-            <Ionicons name="trophy" size={28} color={THEME.colors.yellow} />
-          </View>
-          <View style={styles.scoreTextBox}>
-            <AppText variant="caption" color={THEME.colors.textMuted}>
-              EN YÜKSEK SKORUN
-            </AppText>
-            <AppText variant="titleMedium" style={styles.highScoreNumber}>
-              {currentHighScore.toLocaleString()} Puan
-            </AppText>
-          </View>
-        </View>
+      {/* Alt Kısım: Sadece Butonlar (Sadelik Esastır) */}
+      <View style={styles.bottomSection}>
+        <AppButton
+          title="Oyuna Başla"
+          onPress={onStartGame}
+          variant="primary"
+          size="lg"
+          icon={<Ionicons name="play" size={24} color="#FFFFFF" />}
+          style={styles.mainStartBtn}
+        />
 
-        {/* Features Pills */}
-        <View style={styles.featuresRow}>
-          <View style={styles.featureItem}>
-            <AppText style={styles.featureEmoji}>🔴</AppText>
-            <AppText variant="caption" style={styles.featureText}>Renk Avı</AppText>
-          </View>
-          <View style={styles.featureItem}>
-            <AppText style={styles.featureEmoji}>😜</AppText>
-            <AppText variant="caption" style={styles.featureText}>Komik Poz</AppText>
-          </View>
-          <View style={styles.featureItem}>
-            <AppText style={styles.featureEmoji}>☕</AppText>
-            <AppText variant="caption" style={styles.featureText}>Eşya Bul</AppText>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionSection}>
+        <View style={styles.secondaryBtnRow}>
           <AppButton
-            title="Macerayı Başlat"
-            onPress={onStartGame}
-            variant="primary"
-            size="lg"
-            icon={<Ionicons name="camera-outline" size={24} color="#FFFFFF" />}
-            style={styles.mainPlayBtn}
+            title="Nasıl Oynanır?"
+            onPress={() => setShowHowToPlay(true)}
+            variant="outline"
+            size="md"
+            icon={<Ionicons name="help-circle-outline" size={18} color={THEME.colors.primary} />}
+            style={styles.halfBtn}
           />
 
-          <View style={styles.secondaryBtnRow}>
-            <AppButton
-              title="Nasıl Oynanır?"
-              onPress={() => setShowHowToPlay(true)}
-              variant="outline"
-              size="md"
-              icon={<Ionicons name="help-circle-outline" size={20} color={THEME.colors.primary} />}
-              style={styles.halfBtn}
-            />
-
-            <AppButton
-              title="Ayarlar"
-              onPress={() => setShowSettings(true)}
-              variant="outline"
-              size="md"
-              icon={<Ionicons name="settings-outline" size={20} color={THEME.colors.primary} />}
-              style={styles.halfBtn}
-            />
-          </View>
+          <AppButton
+            title="Ayarlar"
+            onPress={() => setShowSettings(true)}
+            variant="outline"
+            size="md"
+            icon={<Ionicons name="settings-outline" size={18} color={THEME.colors.primary} />}
+            style={styles.halfBtn}
+          />
         </View>
-      </ScrollView>
+      </View>
 
       {/* Modals */}
       <SettingsModal
@@ -165,131 +134,127 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: THEME.colors.background,
-  },
-  scrollContainer: {
-    flexGrow: 1,
     paddingHorizontal: 22,
     justifyContent: 'space-between',
   },
-  topStatusRow: {
+  topHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingVertical: 8,
   },
-  heroSection: {
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
   },
-  mascotCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: THEME.radius.full,
-    backgroundColor: THEME.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 4,
-    borderColor: THEME.colors.primaryLight,
-    position: 'relative',
-  },
-  floatingLens: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.full,
-    padding: 6,
-    ...THEME.shadows.soft,
-  },
-  floatingEmoji: {
-    position: 'absolute',
-    bottom: -4,
-    left: -4,
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.full,
-    padding: 4,
-    ...THEME.shadows.soft,
-  },
-  miniEmoji: {
-    fontSize: 20,
-  },
-  appTitle: {
-    color: THEME.colors.textMain,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: '900',
-    fontSize: 38,
-    letterSpacing: -1,
+    color: THEME.colors.textMain,
+    letterSpacing: 1.5,
   },
-  appSubtitle: {
-    fontWeight: '800',
-    marginTop: 2,
-    fontSize: 18,
-  },
-  appDesc: {
-    maxWidth: 300,
-    marginTop: 8,
-    lineHeight: 18,
-  },
-  highScoreCard: {
+  scoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    marginVertical: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: THEME.radius.full,
+    gap: 6,
     borderWidth: 1.5,
     borderColor: THEME.colors.surfaceBorder,
+    ...THEME.shadows.soft,
   },
-  scoreIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.yellowLight,
+  scoreText: {
+    color: THEME.colors.textMain,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  centerSection: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginVertical: 10,
   },
-  scoreTextBox: {
-    flex: 1,
-  },
-  highScoreNumber: {
-    color: THEME.colors.textMain,
-    fontWeight: '900',
-    marginTop: 2,
-  },
-  featuresRow: {
-    flexDirection: 'row',
+  phoneFrame: {
+    width: 230,
+    height: 370,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 44,
+    borderWidth: 6,
+    borderColor: THEME.colors.primary,
+    padding: 10,
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    marginVertical: 8,
   },
-  featureItem: {
-    flex: 1,
+  phoneSpeakerNotch: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: THEME.radius.md,
     gap: 6,
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
+    marginTop: 4,
   },
-  featureEmoji: {
-    fontSize: 18,
+  phoneCameraDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CBD5E1',
   },
-  featureText: {
+  phoneSpeakerBar: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#E2E8F0',
+  },
+  phoneInnerScreen: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: THEME.colors.primaryLight,
+    borderRadius: 28,
+    marginVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  cameraIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    ...THEME.shadows.soft,
+  },
+  piksoLogoText: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: THEME.colors.primary,
+    letterSpacing: 2,
+  },
+  taglinePill: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: THEME.radius.full,
+  },
+  taglineText: {
+    color: THEME.colors.textMuted,
     fontWeight: '700',
-    color: THEME.colors.textMain,
+    fontSize: 11,
   },
-  actionSection: {
+  phoneHomeBar: {
+    width: 60,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+    marginBottom: 4,
+  },
+  bottomSection: {
     gap: 12,
-    marginTop: 10,
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  mainPlayBtn: {
+  mainStartBtn: {
     width: '100%',
   },
   secondaryBtnRow: {

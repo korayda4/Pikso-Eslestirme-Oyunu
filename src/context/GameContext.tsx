@@ -1,17 +1,14 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import * as ImagePicker from 'expo-image-picker';
 import { CameraQuest, GameState, ImageAnalysisResult } from '../core/types/game';
 import { GAME_RULES } from '../core/constants/gameRules';
 import { QuestManager } from '../engine/QuestManager';
-import { ImageAnalyzer } from '../engine/ImageAnalyzer';
 import { useSettings } from './SettingsContext';
 import { useAudio } from './AudioContext';
 
 interface GameContextValue {
   gameState: GameState;
   startGame: () => void;
-  capturePhoto: () => Promise<void>;
-  pickFromGallery: () => Promise<void>;
+  recordAnalysis: (analysis: ImageAnalysisResult) => void;
   proceedToNextQuest: () => void;
   pauseGame: () => void;
   resumeGame: () => void;
@@ -48,7 +45,7 @@ const initialGameState: GameState = {
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { settings, recordGameScore } = useSettings();
+  const { recordGameScore } = useSettings();
   const { playSfx } = useAudio();
 
   const [gameState, setGameState] = useState<GameState>(initialGameState);
@@ -143,20 +140,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     startQuestTimer(firstQuest.timeLimit);
   };
 
-  const processImageUri = async (uri: string, base64?: string | null) => {
-    if (!gameState.currentQuest) return;
-
+  const recordAnalysis = (analysis: ImageAnalysisResult) => {
     clearGameTimer();
-    setGameState((prev) => ({ ...prev, isAnalyzing: true }));
 
-    try {
-      const analysis = await ImageAnalyzer.analyze(
-        uri,
-        gameState.currentQuest,
-        gameState.timeRemaining,
-        base64
-      );
-
+    if (analysis.isSuccess) {
       playSfx('correct');
 
       setGameState((prev) => {
@@ -165,7 +152,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newHighestStreak = Math.max(prev.stats.highestStreak, newStreak);
         const bestSim = Math.max(prev.stats.bestSimilarity, analysis.matchPercentage);
 
-        // Life bonus every 4 streak
         let newLives = prev.lives;
         if (newStreak % 4 === 0 && newLives < prev.maxLives) {
           newLives += 1;
@@ -176,7 +162,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           score: newScore,
           streak: newStreak,
           lives: newLives,
-          isAnalyzing: false,
           lastAnalysis: analysis,
           stats: {
             ...prev.stats,
@@ -187,63 +172,35 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         };
       });
-    } catch (e) {
-      console.warn('Analysis error:', e);
-      setGameState((prev) => ({ ...prev, isAnalyzing: false }));
-    }
-  };
+    } else {
+      playSfx('wrong');
 
-  const capturePhoto = async () => {
-    try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        alert('Kamerayı kullanabilmek için kamera izni vermeniz gerekmektedir.');
-        return;
-      }
+      setGameState((prev) => {
+        const newLives = prev.lives - 1;
+        const isOver = newLives <= 0;
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 4],
-        quality: 0.6,
-        base64: true,
+        if (isOver) {
+          handleGameOver(prev.score);
+        }
+
+        return {
+          ...prev,
+          lives: Math.max(0, newLives),
+          streak: 0,
+          multiplier: 1.0,
+          isGameOver: isOver,
+          lastAnalysis: analysis,
+          stats: {
+            ...prev.stats,
+            failedQuests: prev.stats.failedQuests + 1,
+          },
+        };
       });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        await processImageUri(result.assets[0].uri, result.assets[0].base64);
-      }
-    } catch (err) {
-      console.warn('Camera launch error:', err);
-    }
-  };
-
-  const pickFromGallery = async () => {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        alert('Galeriyi kullanabilmek için galeri izni vermeniz gerekmektedir.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 4],
-        quality: 0.6,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        await processImageUri(result.assets[0].uri, result.assets[0].base64);
-      }
-    } catch (err) {
-      console.warn('Gallery launch error:', err);
     }
   };
 
   const proceedToNextQuest = () => {
     setGameState((prev) => {
-      // Level progression every 2 completed quests
       const nextLevel = Math.floor(prev.stats.completedQuests / 2) + 1;
       const nextQuest = QuestManager.getNextQuest(nextLevel);
 
@@ -290,8 +247,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         gameState,
         startGame,
-        capturePhoto,
-        pickFromGallery,
+        recordAnalysis,
         proceedToNextQuest,
         pauseGame,
         resumeGame,
