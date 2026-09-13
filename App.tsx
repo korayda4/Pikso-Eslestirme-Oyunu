@@ -1,20 +1,43 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SettingsProvider } from './src/context/SettingsContext';
+import { AudioProvider } from './src/context/AudioContext';
+import { GameProvider, useGame } from './src/context/GameContext';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { GameScreen } from './src/screens/GameScreen';
+
+type ActiveScreen = 'home' | 'game';
+
+const NavigationContainer: React.FC = () => {
+  const [currentScreen, setCurrentScreen] = useState<ActiveScreen>('home');
+  const { startGame } = useGame();
+
+  const handleStartGame = () => {
+    startGame();
+    setCurrentScreen('game');
+  };
+
+  const handleGoHome = () => {
+    setCurrentScreen('home');
+  };
+
+  return currentScreen === 'home' ? (
+    <HomeScreen onStartGame={handleStartGame} />
+  ) : (
+    <GameScreen onGoHome={handleGoHome} />
+  );
+};
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <SettingsProvider>
+        <AudioProvider>
+          <GameProvider>
+            <NavigationContainer />
+          </GameProvider>
+        </AudioProvider>
+      </SettingsProvider>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
