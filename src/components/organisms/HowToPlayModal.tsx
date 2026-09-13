@@ -16,32 +16,32 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
 }) => {
   const steps = [
     {
-      icon: 'shapes-outline' as const,
+      icon: 'camera-outline' as const,
       color: THEME.colors.primary,
       bg: THEME.colors.primaryLight,
-      title: '1. Şekil ve Renk Eşleme',
-      desc: 'Soru kartında belirtilen renk ve şekil kombinasyonunu seçenekler arasından bulup dokun.',
+      title: '1. Görevi Oku & Çevrene Bak',
+      desc: 'Sana verilen rengi (kırmızı, mavi...), nesneyi veya şekli etrafında ara.',
     },
     {
-      icon: 'bulb-outline' as const,
+      icon: 'happy-outline' as const,
+      color: THEME.colors.accent,
+      bg: THEME.colors.accentLight,
+      title: '2. Komik Yüz İfadeleri',
+      desc: '"Dilini çıkar ve şaşı bak!" gibi eğlenceli tiyatro pozlarını kameraya vererek cesaretini göster!',
+    },
+    {
+      icon: 'scan-outline' as const,
       color: THEME.colors.yellow,
       bg: THEME.colors.yellowLight,
-      title: '2. Çağrışım ve İpuçları',
-      desc: '"Yazın serinleten tatlı lezzet" gibi ipuçlarını oku ve uyuşan nesneyi (örneğin dondurmayı) seç!',
+      title: '3. Fotoğraf Çek & Analiz Et',
+      desc: 'Kamera butonuyla anı yakala. Çevrimdışı yapay zeka analiz motoru benzerlik oranını hesaplar.',
     },
     {
       icon: 'flame-outline' as const,
       color: THEME.colors.secondary,
       bg: THEME.colors.secondaryLight,
-      title: '3. Seri & Kombo Çarpanı',
-      desc: 'Arka arkaya doğru bildikçe kombo çarpanın 2.5x katına kadar çıkar ve her 5 seride +1 can kazanırsın.',
-    },
-    {
-      icon: 'timer-outline' as const,
-      color: THEME.colors.mint,
-      bg: THEME.colors.mintLight,
-      title: '4. Süre & Can Yönetimi',
-      desc: 'Her soru için verilen süre dolmadan cevap ver. Yanlış cevaplar ve süre bitimi 1 can götürür.',
+      title: '4. Seri Yakala & Puan Topla',
+      desc: 'Her doğru yakalama kombonu artırır, seri yaptıkça can ve ekstra bonus puan kazanırsın!',
     },
   ];
 
@@ -80,7 +80,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
           </ScrollView>
 
           <AppButton
-            title="Anladım, Haydi Oynayalım!"
+            title="Harika, Haydi Başlayalım!"
             onPress={onClose}
             variant="primary"
             size="lg"

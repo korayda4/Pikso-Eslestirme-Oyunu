@@ -1,12 +1,21 @@
 import React from 'react';
-import { View, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../theme/theme';
 import { useGame } from '../context/GameContext';
 import { GameHeader } from '../components/organisms/GameHeader';
 import { ScoreBoard } from '../components/molecules/ScoreBoard';
-import { QuestionBoard } from '../components/organisms/QuestionBoard';
+import { QuestCard } from '../components/organisms/QuestCard';
+import { PhotoAnalysisModal } from '../components/organisms/PhotoAnalysisModal';
 import { PauseModal } from '../components/organisms/PauseModal';
 import { GameOverModal } from '../components/organisms/GameOverModal';
+import { AppButton } from '../components/atoms/AppButton';
 import { AppText } from '../components/atoms/AppText';
 
 interface GameScreenProps {
@@ -14,9 +23,12 @@ interface GameScreenProps {
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({ onGoHome }) => {
+  const insets = useSafeAreaInsets();
   const {
     gameState,
-    submitAnswer,
+    capturePhoto,
+    pickFromGallery,
+    proceedToNextQuest,
     pauseGame,
     resumeGame,
     restartGame,
@@ -29,31 +41,44 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGoHome }) => {
     onGoHome();
   };
 
-  if (!gameState.currentQuestion) {
+  if (!gameState.currentQuest) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <AppText variant="bodyLarge">Oyun Hazırlanıyor...</AppText>
-        </View>
-      </SafeAreaView>
+      <View
+        style={[
+          styles.screen,
+          styles.center,
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
+        <ActivityIndicator size="large" color={THEME.colors.primary} />
+        <AppText variant="bodyLarge" style={{ marginTop: 12 }}>
+          Görev Yükleniyor...
+        </AppText>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
-
-      {/* Top HUD / Header */}
+    <View
+      style={[
+        styles.screen,
+        {
+          paddingTop: Math.max(insets.top, 12),
+          paddingBottom: Math.max(insets.bottom, 12),
+        },
+      ]}
+    >
+      {/* Top Game HUD */}
       <GameHeader
         lives={gameState.lives}
         maxLives={gameState.maxLives}
         timeRemaining={gameState.timeRemaining}
-        totalTime={gameState.currentQuestion.timeLimit}
+        totalTime={gameState.currentQuest.timeLimit}
         onPause={pauseGame}
       />
 
-      {/* Score & Multiplier HUD */}
-      <View style={styles.scoreBoardWrapper}>
+      {/* Score and Streak HUD */}
+      <View style={styles.scoreWrapper}>
         <ScoreBoard
           score={gameState.score}
           level={gameState.level}
@@ -62,12 +87,53 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGoHome }) => {
         />
       </View>
 
-      {/* Active Question & Options Grid */}
-      <QuestionBoard
-        question={gameState.currentQuestion}
-        selectedOptionId={gameState.selectedOptionId}
-        isProcessing={gameState.isAnswerProcessing}
-        onSelectOption={submitAnswer}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Quest Card */}
+        <QuestCard quest={gameState.currentQuest} />
+
+        {/* Analyzing Spinner or Shutter Trigger Section */}
+        {gameState.isAnalyzing ? (
+          <View style={[styles.analyzingCard, THEME.shadows.soft]}>
+            <ActivityIndicator size="large" color={THEME.colors.primary} />
+            <AppText variant="headline" style={styles.analyzingTitle}>
+              Pikso Analiz Ediyor...
+            </AppText>
+            <AppText variant="caption" color={THEME.colors.textMuted} center>
+              Fotoğraftaki renkler, formlar ve yüz ifadeleri inceleniyor
+            </AppText>
+          </View>
+        ) : (
+          <View style={styles.cameraActionSection}>
+            <AppButton
+              title="Fotoğraf Çek & Analiz Et"
+              onPress={capturePhoto}
+              variant="primary"
+              size="lg"
+              icon={<Ionicons name="camera" size={26} color="#FFFFFF" />}
+              style={styles.shutterBtn}
+            />
+
+            <AppButton
+              title="Galeriden Resim Seç"
+              onPress={pickFromGallery}
+              variant="outline"
+              size="md"
+              icon={<Ionicons name="images-outline" size={20} color={THEME.colors.primary} />}
+              style={styles.galleryBtn}
+            />
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Analysis Result Modal */}
+      <PhotoAnalysisModal
+        visible={!!gameState.lastAnalysis}
+        result={gameState.lastAnalysis}
+        onContinue={proceedToNextQuest}
+        onRetry={capturePhoto}
       />
 
       {/* Pause Modal */}
@@ -90,22 +156,50 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGoHome }) => {
         onRestart={restartGame}
         onHome={handleGoHome}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screen: {
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  loadingContainer: {
-    flex: 1,
+  center: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scoreBoardWrapper: {
+  scoreWrapper: {
     paddingHorizontal: 16,
     marginBottom: 6,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  cameraActionSection: {
+    gap: 12,
+    marginTop: 10,
+  },
+  shutterBtn: {
+    width: '100%',
+  },
+  galleryBtn: {
+    width: '100%',
+  },
+  analyzingCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.xl,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 16,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.surfaceBorder,
+  },
+  analyzingTitle: {
+    color: THEME.colors.textMain,
+    fontWeight: '800',
+    marginTop: 12,
+    marginBottom: 4,
   },
 });

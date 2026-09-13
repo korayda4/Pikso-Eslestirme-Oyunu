@@ -26,11 +26,6 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   onRestart,
   onHome,
 }) => {
-  const accuracy =
-    stats.totalQuestions > 0
-      ? Math.round((stats.correctAnswers / stats.totalQuestions) * 100)
-      : 0;
-
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -59,7 +54,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           </AppText>
 
           <AppText variant="caption" color={THEME.colors.textMuted} center>
-            Harika bir dikkat ve hız sergiledin
+            Kamera ile harika avlar ve komik pozlar verdin!
           </AppText>
 
           {/* Main Score Box */}
@@ -85,10 +80,10 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
             <View style={styles.statItem}>
               <AppText variant="caption" color={THEME.colors.textMuted}>
-                Doğru Cevap
+                Tamamlanan Görev
               </AppText>
               <AppText variant="headline" style={styles.statValue}>
-                {stats.correctAnswers}
+                {stats.completedQuests}
               </AppText>
             </View>
 
@@ -103,10 +98,10 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
             <View style={styles.statItem}>
               <AppText variant="caption" color={THEME.colors.textMuted}>
-                İsabet Oranı
+                En İyi Benzerlik
               </AppText>
               <AppText variant="headline" style={styles.statValue}>
-                %{accuracy}
+                %{stats.bestSimilarity || 0}
               </AppText>
             </View>
           </View>

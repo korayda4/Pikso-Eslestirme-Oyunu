@@ -1,3 +1,7 @@
+export type QuestCategory = 'color' | 'face' | 'object' | 'shape' | 'funny';
+
+export type GameDifficulty = 'easy' | 'medium' | 'hard';
+
 export type ShapeType =
   | 'circle'
   | 'square'
@@ -8,6 +12,8 @@ export type ShapeType =
   | 'hexagon'
   | 'crescent';
 
+export type IconType = 'Ionicons' | 'MaterialCommunityIcons' | 'Feather';
+
 export interface ColorDefinition {
   id: string;
   name: string;
@@ -15,8 +21,6 @@ export interface ColorDefinition {
   pastelHex: string;
   borderHex: string;
 }
-
-export type IconType = 'Ionicons' | 'MaterialCommunityIcons' | 'Feather';
 
 export interface ConceptItem {
   id: string;
@@ -54,12 +58,36 @@ export interface Question {
   timeLimit: number;
 }
 
-export type GameDifficulty = 'easy' | 'medium' | 'hard';
+export interface CameraQuest {
+  id: string;
+  category: QuestCategory;
+  title: string;
+  prompt: string;
+  hint: string;
+  emoji: string;
+  levelRequired: number;
+  timeLimit: number; // in seconds
+  targetColor?: 'red' | 'green' | 'blue' | 'yellow' | 'orange' | 'purple' | 'white' | 'dark';
+  isFaceQuest?: boolean;
+  funFactor?: number;
+  badgeText: string;
+  badgeColor: string;
+}
+
+export interface ImageAnalysisResult {
+  matchPercentage: number;
+  similarityScore: number;
+  feedbackTitle: string;
+  feedbackMessage: string;
+  photoUri: string;
+  isSuccess: boolean;
+}
 
 export interface GameStats {
-  correctAnswers: number;
-  wrongAnswers: number;
-  totalQuestions: number;
+  completedQuests: number;
+  failedQuests: number;
+  bestSimilarity: number;
+  totalScore: number;
   highestStreak: number;
 }
 
@@ -70,12 +98,12 @@ export interface GameState {
   maxLives: number;
   streak: number;
   multiplier: number;
-  currentQuestion: Question | null;
+  currentQuest: CameraQuest | null;
   isPlaying: boolean;
   isPaused: boolean;
   isGameOver: boolean;
-  isAnswerProcessing: boolean;
-  selectedOptionId: string | null;
+  isAnalyzing: boolean;
+  lastAnalysis: ImageAnalysisResult | null;
   timeRemaining: number;
   stats: GameStats;
 }

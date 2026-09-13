@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../theme/theme';
 import { AppText } from '../components/atoms/AppText';
@@ -20,6 +20,7 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartGame }) => {
+  const insets = useSafeAreaInsets();
   const { settings } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -27,14 +28,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartGame }) => {
   const currentHighScore = settings.highScores[settings.difficulty] || 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View
+      style={[
+        styles.screen,
+        {
+          paddingTop: Math.max(insets.top, 16),
+          paddingBottom: Math.max(insets.bottom, 16),
+        },
+      ]}
+    >
       <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
 
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Badges & Status */}
+        {/* Top Badges */}
         <View style={styles.topStatusRow}>
           <Badge
             label="⚡ %100 Çevrimdışı"
@@ -44,22 +53,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartGame }) => {
           />
 
           <Badge
-            label={`Zorluk: ${settings.difficulty === 'easy' ? 'Kolay' : settings.difficulty === 'medium' ? 'Orta' : 'Zor'}`}
+            label="📸 Kamera Dedektifi"
             color={THEME.colors.primary}
             backgroundColor={THEME.colors.primaryLight}
             size="sm"
           />
         </View>
 
-        {/* Mascot & Hero Visual */}
+        {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={[styles.mascotCircle, THEME.shadows.medium]}>
-            <Ionicons name="shapes" size={64} color={THEME.colors.primary} />
-            <View style={styles.floatingStar}>
-              <Ionicons name="star" size={24} color={THEME.colors.yellow} />
+            <Ionicons name="camera" size={54} color={THEME.colors.primary} />
+            <View style={styles.floatingLens}>
+              <Ionicons name="sparkles" size={20} color={THEME.colors.yellow} />
             </View>
-            <View style={styles.floatingHeart}>
-              <Ionicons name="heart" size={22} color={THEME.colors.accent} />
+            <View style={styles.floatingEmoji}>
+              <AppText style={styles.miniEmoji}>😜</AppText>
             </View>
           </View>
 
@@ -67,36 +76,52 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartGame }) => {
             Pikso
           </AppText>
           <AppText variant="bodyLarge" color={THEME.colors.primary} style={styles.appSubtitle} center>
-            Şekil, Renk & Eşleme Macerası
+            Kamera ile Bul & Poz Ver!
           </AppText>
           <AppText variant="caption" color={THEME.colors.textMuted} style={styles.appDesc} center>
-            Söylenen kelime ve ipuçlarına göre doğru nesneyi veya şekli bul, serileri yakala ve puanları topla!
+            İstenen nesneyi, rengi veya komik yüz ifadesini kamerayla çek! Benzerlik oranına göre puanları topla!
           </AppText>
         </View>
 
         {/* High Score Card */}
         <View style={[styles.highScoreCard, THEME.shadows.soft]}>
           <View style={styles.scoreIconBox}>
-            <Ionicons name="trophy" size={26} color={THEME.colors.yellow} />
+            <Ionicons name="trophy" size={28} color={THEME.colors.yellow} />
           </View>
           <View style={styles.scoreTextBox}>
             <AppText variant="caption" color={THEME.colors.textMuted}>
-              EN YÜKSEK REKORUN
+              EN YÜKSEK SKORUN
             </AppText>
             <AppText variant="titleMedium" style={styles.highScoreNumber}>
-              {currentHighScore.toLocaleString()}
+              {currentHighScore.toLocaleString()} Puan
             </AppText>
+          </View>
+        </View>
+
+        {/* Features Pills */}
+        <View style={styles.featuresRow}>
+          <View style={styles.featureItem}>
+            <AppText style={styles.featureEmoji}>🔴</AppText>
+            <AppText variant="caption" style={styles.featureText}>Renk Avı</AppText>
+          </View>
+          <View style={styles.featureItem}>
+            <AppText style={styles.featureEmoji}>😜</AppText>
+            <AppText variant="caption" style={styles.featureText}>Komik Poz</AppText>
+          </View>
+          <View style={styles.featureItem}>
+            <AppText style={styles.featureEmoji}>☕</AppText>
+            <AppText variant="caption" style={styles.featureText}>Eşya Bul</AppText>
           </View>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionSection}>
           <AppButton
-            title="Oyuna Başla"
+            title="Macerayı Başlat"
             onPress={onStartGame}
             variant="primary"
             size="lg"
-            icon={<Ionicons name="play" size={24} color="#FFFFFF" />}
+            icon={<Ionicons name="camera-outline" size={24} color="#FFFFFF" />}
             style={styles.mainPlayBtn}
           />
 
@@ -132,60 +157,62 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartGame }) => {
         visible={showHowToPlay}
         onClose={() => setShowHowToPlay(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screen: {
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  container: {
+  scrollContainer: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 22,
     justifyContent: 'space-between',
   },
   topStatusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   heroSection: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 8,
   },
   mascotCircle: {
-    width: 130,
-    height: 130,
+    width: 120,
+    height: 120,
     borderRadius: THEME.radius.full,
     backgroundColor: THEME.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 4,
     borderColor: THEME.colors.primaryLight,
     position: 'relative',
   },
-  floatingStar: {
+  floatingLens: {
     position: 'absolute',
-    top: -4,
-    right: 2,
+    top: -2,
+    right: -2,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.radius.full,
+    padding: 6,
+    ...THEME.shadows.soft,
+  },
+  floatingEmoji: {
+    position: 'absolute',
+    bottom: -4,
+    left: -4,
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.radius.full,
     padding: 4,
     ...THEME.shadows.soft,
   },
-  floatingHeart: {
-    position: 'absolute',
-    bottom: -2,
-    left: 2,
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.full,
-    padding: 4,
-    ...THEME.shadows.soft,
+  miniEmoji: {
+    fontSize: 20,
   },
   appTitle: {
     color: THEME.colors.textMain,
@@ -194,11 +221,12 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   appSubtitle: {
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 2,
+    fontSize: 18,
   },
   appDesc: {
-    maxWidth: 290,
+    maxWidth: 300,
     marginTop: 8,
     lineHeight: 18,
   },
@@ -209,13 +237,13 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     paddingVertical: 14,
     paddingHorizontal: 18,
-    marginVertical: 16,
+    marginVertical: 12,
     borderWidth: 1.5,
     borderColor: THEME.colors.surfaceBorder,
   },
   scoreIconBox: {
-    width: 50,
-    height: 50,
+    width: 48,
+    height: 48,
     borderRadius: THEME.radius.md,
     backgroundColor: THEME.colors.yellowLight,
     alignItems: 'center',
@@ -230,10 +258,36 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 2,
   },
+  featuresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginVertical: 8,
+  },
+  featureItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.colors.surface,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: THEME.radius.md,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+  },
+  featureEmoji: {
+    fontSize: 18,
+  },
+  featureText: {
+    fontWeight: '700',
+    color: THEME.colors.textMain,
+  },
   actionSection: {
     gap: 12,
     marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   mainPlayBtn: {
     width: '100%',

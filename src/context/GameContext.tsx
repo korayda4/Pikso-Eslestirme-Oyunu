@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { GameState, Question } from '../core/types/game';
+import * as ImagePicker from 'expo-image-picker';
+import { CameraQuest, GameState, ImageAnalysisResult } from '../core/types/game';
 import { GAME_RULES } from '../core/constants/gameRules';
-import { QuestionGenerator } from '../engine/QuestionGenerator';
+import { QuestManager } from '../engine/QuestManager';
+import { ImageAnalyzer } from '../engine/ImageAnalyzer';
 import { useSettings } from './SettingsContext';
 import { useAudio } from './AudioContext';
 
 interface GameContextValue {
   gameState: GameState;
   startGame: () => void;
-  submitAnswer: (optionId: string) => void;
+  capturePhoto: () => Promise<void>;
+  pickFromGallery: () => Promise<void>;
+  proceedToNextQuest: () => void;
   pauseGame: () => void;
   resumeGame: () => void;
   restartGame: () => void;
@@ -17,9 +21,10 @@ interface GameContextValue {
 }
 
 const initialStats = {
-  correctAnswers: 0,
-  wrongAnswers: 0,
-  totalQuestions: 0,
+  completedQuests: 0,
+  failedQuests: 0,
+  bestSimilarity: 0,
+  totalScore: 0,
   highestStreak: 0,
 };
 
@@ -30,13 +35,13 @@ const initialGameState: GameState = {
   maxLives: GAME_RULES.MAX_LIVES,
   streak: 0,
   multiplier: 1.0,
-  currentQuestion: null,
+  currentQuest: null,
   isPlaying: false,
   isPaused: false,
   isGameOver: false,
-  isAnswerProcessing: false,
-  selectedOptionId: null,
-  timeRemaining: 15,
+  isAnalyzing: false,
+  lastAnalysis: null,
+  timeRemaining: 30,
   stats: initialStats,
 };
 
@@ -51,7 +56,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Clear timer helper
   const clearGameTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -59,14 +63,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Start countdown timer
-  const startQuestionTimer = (duration: number) => {
+  const startQuestTimer = (duration: number) => {
     clearGameTimer();
     setGameState((prev) => ({ ...prev, timeRemaining: duration }));
 
     timerRef.current = setInterval(() => {
       setGameState((prev) => {
-        if (!prev.isPlaying || prev.isPaused || prev.isAnswerProcessing || prev.isGameOver) {
+        if (!prev.isPlaying || prev.isPaused || prev.isAnalyzing || prev.lastAnalysis || prev.isGameOver) {
           return prev;
         }
 
@@ -81,7 +84,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 1000);
   };
 
-  // Handle when timer runs out
   const handleTimeUp = () => {
     playSfx('wrong');
     setGameState((prev) => {
@@ -92,9 +94,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         handleGameOver(prev.score);
       }
 
-      const nextQuestion = !isOver
-        ? QuestionGenerator.generate(prev.level, settings.difficulty)
-        : prev.currentQuestion;
+      const nextQuest = !isOver ? QuestManager.getNextQuest(prev.level) : prev.currentQuest;
 
       return {
         ...prev,
@@ -102,24 +102,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         streak: 0,
         multiplier: 1.0,
         isGameOver: isOver,
-        currentQuestion: nextQuestion,
+        currentQuest: nextQuest,
         stats: {
           ...prev.stats,
-          wrongAnswers: prev.stats.wrongAnswers + 1,
-          totalQuestions: prev.stats.totalQuestions + 1,
+          failedQuests: prev.stats.failedQuests + 1,
         },
       };
     });
 
-    // If still alive, restart timer for next question
     setTimeout(() => {
       setGameState((prev) => {
-        if (!prev.isGameOver && prev.currentQuestion) {
-          startQuestionTimer(prev.currentQuestion.timeLimit);
+        if (!prev.isGameOver && prev.currentQuest) {
+          startQuestTimer(prev.currentQuest.timeLimit);
         }
         return prev;
       });
-    }, 400);
+    }, 500);
   };
 
   const handleGameOver = async (finalScore: number) => {
@@ -133,134 +131,131 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsNewRecord(false);
     clearGameTimer();
 
-    const firstQuestion = QuestionGenerator.generate(1, settings.difficulty);
+    const firstQuest = QuestManager.getNextQuest(1);
 
     setGameState({
       ...initialGameState,
       isPlaying: true,
-      currentQuestion: firstQuestion,
-      timeRemaining: firstQuestion.timeLimit,
+      currentQuest: firstQuest,
+      timeRemaining: firstQuest.timeLimit,
     });
 
-    startQuestionTimer(firstQuestion.timeLimit);
+    startQuestTimer(firstQuest.timeLimit);
   };
 
-  const submitAnswer = (optionId: string) => {
-    if (
-      !gameState.isPlaying ||
-      gameState.isPaused ||
-      gameState.isGameOver ||
-      gameState.isAnswerProcessing ||
-      !gameState.currentQuestion
-    ) {
-      return;
-    }
+  const processImageUri = async (uri: string, base64?: string | null) => {
+    if (!gameState.currentQuest) return;
 
     clearGameTimer();
-    const selected = gameState.currentQuestion.options.find((o) => o.id === optionId);
-    const isCorrect = !!selected?.isCorrect;
+    setGameState((prev) => ({ ...prev, isAnalyzing: true }));
 
-    setGameState((prev) => ({
-      ...prev,
-      isAnswerProcessing: true,
-      selectedOptionId: optionId,
-    }));
+    try {
+      const analysis = await ImageAnalyzer.analyze(
+        uri,
+        gameState.currentQuest,
+        gameState.timeRemaining,
+        base64
+      );
 
-    if (isCorrect) {
       playSfx('correct');
 
-      setTimeout(() => {
-        setGameState((prev) => {
-          const newStreak = prev.streak + 1;
-          const newHighestStreak = Math.max(prev.stats.highestStreak, newStreak);
-          const currentMultiplier = GAME_RULES.getMultiplier(newStreak);
+      setGameState((prev) => {
+        const newScore = prev.score + analysis.similarityScore;
+        const newStreak = prev.streak + 1;
+        const newHighestStreak = Math.max(prev.stats.highestStreak, newStreak);
+        const bestSim = Math.max(prev.stats.bestSimilarity, analysis.matchPercentage);
 
-          // Calculate points
-          const timeBonus = prev.timeRemaining * GAME_RULES.TIME_BONUS_MULTIPLIER;
-          const pointsEarned = Math.round(
-            (GAME_RULES.BASE_POINTS + timeBonus) * currentMultiplier
-          );
-          const newScore = prev.score + pointsEarned;
+        // Life bonus every 4 streak
+        let newLives = prev.lives;
+        if (newStreak % 4 === 0 && newLives < prev.maxLives) {
+          newLives += 1;
+        }
 
-          // Check streak life bonus (every 5 streak gives 1 heart if not full)
-          let newLives = prev.lives;
-          if (newStreak % 5 === 0 && newLives < prev.maxLives) {
-            newLives += 1;
-          }
-
-          // Level progression every 4 correct answers
-          const newTotalCorrect = prev.stats.correctAnswers + 1;
-          const newLevel = Math.floor(newTotalCorrect / 3) + 1;
-
-          const nextQuestion = QuestionGenerator.generate(newLevel, settings.difficulty);
-
-          startQuestionTimer(nextQuestion.timeLimit);
-
-          return {
-            ...prev,
-            score: newScore,
-            streak: newStreak,
-            level: newLevel,
-            lives: newLives,
-            multiplier: currentMultiplier,
-            currentQuestion: nextQuestion,
-            isAnswerProcessing: false,
-            selectedOptionId: null,
-            stats: {
-              ...prev.stats,
-              correctAnswers: newTotalCorrect,
-              highestStreak: newHighestStreak,
-              totalQuestions: prev.stats.totalQuestions + 1,
-            },
-          };
-        });
-      }, 550);
-    } else {
-      playSfx('wrong');
-
-      setTimeout(() => {
-        setGameState((prev) => {
-          const newLives = prev.lives - 1;
-          const isOver = newLives <= 0;
-
-          if (isOver) {
-            handleGameOver(prev.score);
-            return {
-              ...prev,
-              lives: 0,
-              streak: 0,
-              multiplier: 1.0,
-              isGameOver: true,
-              isAnswerProcessing: false,
-              selectedOptionId: null,
-              stats: {
-                ...prev.stats,
-                wrongAnswers: prev.stats.wrongAnswers + 1,
-                totalQuestions: prev.stats.totalQuestions + 1,
-              },
-            };
-          }
-
-          const nextQuestion = QuestionGenerator.generate(prev.level, settings.difficulty);
-          startQuestionTimer(nextQuestion.timeLimit);
-
-          return {
-            ...prev,
-            lives: newLives,
-            streak: 0,
-            multiplier: 1.0,
-            currentQuestion: nextQuestion,
-            isAnswerProcessing: false,
-            selectedOptionId: null,
-            stats: {
-              ...prev.stats,
-              wrongAnswers: prev.stats.wrongAnswers + 1,
-              totalQuestions: prev.stats.totalQuestions + 1,
-            },
-          };
-        });
-      }, 700);
+        return {
+          ...prev,
+          score: newScore,
+          streak: newStreak,
+          lives: newLives,
+          isAnalyzing: false,
+          lastAnalysis: analysis,
+          stats: {
+            ...prev.stats,
+            completedQuests: prev.stats.completedQuests + 1,
+            highestStreak: newHighestStreak,
+            bestSimilarity: bestSim,
+            totalScore: newScore,
+          },
+        };
+      });
+    } catch (e) {
+      console.warn('Analysis error:', e);
+      setGameState((prev) => ({ ...prev, isAnalyzing: false }));
     }
+  };
+
+  const capturePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        alert('Kamerayı kullanabilmek için kamera izni vermeniz gerekmektedir.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 4],
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        await processImageUri(result.assets[0].uri, result.assets[0].base64);
+      }
+    } catch (err) {
+      console.warn('Camera launch error:', err);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        alert('Galeriyi kullanabilmek için galeri izni vermeniz gerekmektedir.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 4],
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        await processImageUri(result.assets[0].uri, result.assets[0].base64);
+      }
+    } catch (err) {
+      console.warn('Gallery launch error:', err);
+    }
+  };
+
+  const proceedToNextQuest = () => {
+    setGameState((prev) => {
+      // Level progression every 2 completed quests
+      const nextLevel = Math.floor(prev.stats.completedQuests / 2) + 1;
+      const nextQuest = QuestManager.getNextQuest(nextLevel);
+
+      startQuestTimer(nextQuest.timeLimit);
+
+      return {
+        ...prev,
+        level: nextLevel,
+        currentQuest: nextQuest,
+        lastAnalysis: null,
+      };
+    });
   };
 
   const pauseGame = () => {
@@ -270,7 +265,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resumeGame = () => {
     setGameState((prev) => {
-      startQuestionTimer(prev.timeRemaining);
+      startQuestTimer(prev.timeRemaining);
       return { ...prev, isPaused: false };
     });
   };
@@ -295,7 +290,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         gameState,
         startGame,
-        submitAnswer,
+        capturePhoto,
+        pickFromGallery,
+        proceedToNextQuest,
         pauseGame,
         resumeGame,
         restartGame,
