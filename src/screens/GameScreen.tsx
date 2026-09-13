@@ -17,6 +17,7 @@ import { AppButton } from '../components/atoms/AppButton';
 import { PhotoAnalysisModal } from '../components/organisms/PhotoAnalysisModal';
 import { PauseModal } from '../components/organisms/PauseModal';
 import { GameOverModal } from '../components/organisms/GameOverModal';
+import { FloatingComboBadge } from '../components/atoms/FloatingComboBadge';
 import { ImageAnalyzer } from '../engine/ImageAnalyzer';
 import { ImageAnalysisResult } from '../core/types/game';
 
@@ -230,6 +231,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onGoHome }) => {
             </View>
           </View>
         )}
+
+        {/* Floating Animated Combo Multiplier Badge */}
+        <FloatingComboBadge
+          streak={gameState.streak}
+          multiplier={gameState.multiplier}
+        />
       </View>
 
       {/* 3. FLOATING BOTTOM SHUTTER CONTROLS */}
